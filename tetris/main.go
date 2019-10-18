@@ -21,19 +21,25 @@ const (
 	Height = 12
 )
 
+type Block struct {
+}
+
+var defaultBlock = &Block{}
+
 var (
-	ShapeL = Shape{".X..X..XX", 3}
-	ShapeF = Shape{".XX.X..X.", 3}
-	ShapeT = Shape{"...XXX.X.", 3}
-	ShapeZ = Shape{"XX..XX...", 3}
-	Shape5 = Shape{".XX.X.XX.", 3}
-	ShapeO = Shape{"XXXX", 2}
-	ShapeI = Shape{"....XXXX.........", 4}
+	ShapeL = Shape{".X..X..XX", 3, defaultBlock}
+	ShapeF = Shape{".XX.X..X.", 3, defaultBlock}
+	ShapeT = Shape{"...XXX.X.", 3, defaultBlock}
+	ShapeZ = Shape{"XX..XX...", 3, defaultBlock}
+	Shape5 = Shape{".XX.X.XX.", 3, defaultBlock}
+	ShapeO = Shape{"XXXX", 2, defaultBlock}
+	ShapeI = Shape{"....XXXX.........", 4, defaultBlock}
 )
 
 type Shape struct {
-	data string
-	n    int
+	data  string
+	n     int
+	block *Block
 }
 
 func (s Shape) Rotate() Shape {
@@ -43,7 +49,7 @@ func (s Shape) Rotate() Shape {
 		t := c*s.n + s.n - r - 1
 		bytes[t] = s.data[i]
 	}
-	return Shape{string(bytes), s.n}
+	return Shape{string(bytes), s.n, s.block}
 }
 
 type Point struct {
@@ -56,9 +62,6 @@ func cleanScreen() {
 
 func moveCursor(line, col int) {
 	fmt.Printf("%s[%d;%dH", escape, line, col)
-}
-
-type Block struct {
 }
 
 type Game struct {
