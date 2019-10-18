@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 )
 
 const escape = "\x1b"
@@ -32,7 +33,13 @@ func moveCursor(line, col int) {
 	fmt.Printf("%s[%d;%dH", escape, line, col)
 }
 
-func drawBoard(topLeft Point, width, height int) {
+type Game struct {
+	Score  int
+	Level  int
+	Origin Point
+}
+
+func (g *Game) drawBoard(topLeft Point, width, height int) {
 	moveCursor(topLeft.x, topLeft.y)
 	fmt.Printf("%c", BorderTopLeft)
 	for i := 0; i < width; i++ {
@@ -55,10 +62,32 @@ func drawBoard(topLeft Point, width, height int) {
 	fmt.Printf("%c", BorderBottomRight)
 }
 
-func main() {
+func (g *Game) flushScore() {
+	moveCursor(g.Origin.y+1, g.Origin.x+Width+3)
+	fmt.Printf("Score:%05d", g.Score)
+
+	moveCursor(g.Origin.y+2, g.Origin.x+Width+3)
+	fmt.Printf("Level:   %2d", g.Level)
+}
+
+func (g *Game) init() {
 	cleanScreen()
-	drawBoard(Point{10, 10}, Width, Height)
+	g.drawBoard(Point{10, 10}, Width, Height)
+	g.flushScore()
 	moveCursor(12, 12)
 	fmt.Printf("hahahaa")
+}
+
+func main() {
+	g := Game{Origin: Point{10, 10}}
+	g.init()
+	go func() {
+		for {
+			g.Score += 1
+			time.Sleep(time.Millisecond * 200)
+			g.flushScore()
+		}
+	}()
+	time.Sleep(10 * time.Second)
 	moveCursor(80, 0)
 }
