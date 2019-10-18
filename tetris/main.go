@@ -58,10 +58,16 @@ func moveCursor(line, col int) {
 	fmt.Printf("%s[%d;%dH", escape, line, col)
 }
 
+type Block struct {
+}
+
 type Game struct {
 	Score  int
 	Level  int
 	Origin Point
+	shape  Shape
+	pos    Point
+	board  []*Block
 }
 
 func (g *Game) drawBoard(topLeft Point, width, height int) {
@@ -109,6 +115,38 @@ func (g *Game) flushShape(o Point, s Shape, clear bool) {
 	}
 }
 
+func (g *Game) newShape(s Shape) {
+	g.shape = s
+	g.pos = Point{0, Width/2 - s.n/2}
+	g.flushShape(g.pos, s, false)
+	g.board = make([]*Block, Width*Height)
+}
+
+func (g *Game) Next(delta Point) {
+	g.flushShape(g.pos, g.shape, true)
+	g.pos = Point{g.pos.y + delta.y, g.pos.x + delta.x}
+	g.flushShape(g.pos, g.shape, false)
+}
+
+func (g *Game) isCollision(pos Point, s Shape) bool {
+	for i := 0; i < s.n*s.n; i++ {
+		if s.data[i] == '.' {
+			continue
+		}
+
+		r, c := i/s.n, i%s.n
+
+		if pos.y+r < 0 || pos.y+r >= Height || pos.x+c < 0 || pos.x+c >= Width {
+			return true
+		}
+
+		if g.board[(pos.y+r)*Width+pos.x+c] != nil {
+			return true
+		}
+	}
+	return false
+}
+
 func (g *Game) init() {
 	cleanScreen()
 	g.drawBoard(Point{10, 10}, Width, Height)
@@ -119,14 +157,14 @@ func (g *Game) init() {
 func main() {
 	g := Game{Origin: Point{10, 10}}
 	g.init()
+	g.newShape(ShapeT)
 	go func() {
-		s := ShapeL
 		for {
 			g.Score += 1
-			g.flushShape(Point{0, 0}, s, false)
 			time.Sleep(time.Millisecond * 500)
-			g.flushShape(Point{0, 0}, s, true)
-			s = s.Rotate()
+			if !g.isCollision(Point{g.pos.y + 1, g.pos.x}, g.shape) {
+				g.Next(Point{1, 0})
+			}
 			g.flushScore()
 		}
 	}()
