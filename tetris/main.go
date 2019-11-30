@@ -167,36 +167,56 @@ func (g *Game) isCollision(t *Tetris) bool {
 	return false
 }
 
+func (g *Game) lineIsFull(line int) bool {
+	for i := 0; i < g.Width; i++ {
+		if g.board[line*g.Width+i] == nil {
+			return false
+		}
+	}
+	return true
+}
+
+func (g *Game) clearLines(base, lines int) int {
+	if lines == 0 {
+		return 0
+	}
+
+	for r := base; r >= lines; r-- {
+		for c := 0; c < g.Width; c++ {
+			g.board[r*g.Width+c] = g.board[(r-lines)*g.Width+c]
+		}
+	}
+
+	for i := 0; i < g.Width*lines; i++ {
+		g.board[i] = nil
+	}
+
+	// the more lines, the more score
+	return []int{0, 1, 3, 5, 8}[lines]
+}
+
 func (g *Game) cleanUp() int {
-	lines := 0
-	for r := g.Height - 1; r >= 0; r-- {
-		full := true
-		for i := 0; i < g.Width; i++ {
-			if g.board[r*g.Width+i] == nil {
-				full = false
-				break
-			}
+	score := 0
+	for row := g.Height - 1; row >= 0; {
+		// skip the non-full row
+		for row >= 0 && !g.lineIsFull(row) {
+			row--
 		}
 
-		if !full {
-			break
-		}
-		lines++
-	}
-
-	// scroll the board down
-	if lines > 0 {
-		n := lines * g.Width
-		for i := 0; i < n; i++ {
-			g.board[i] = nil
+		base, lines := row, 0
+		// count the full row
+		for row >= 0 && g.lineIsFull(row) {
+			lines++
+			row--
 		}
 
-		for i := g.Width*g.Height - 1; i >= n; i-- {
-			g.board[i] = g.board[i-n]
+		if lines > 0 {
+			score += g.clearLines(base, lines)
 		}
 	}
 
-	return lines
+	g.Display.DrawBlocks(g.board)
+	return score
 }
 
 func (g *Game) persistTetris(t *Tetris) {
@@ -210,13 +230,8 @@ func (g *Game) persistTetris(t *Tetris) {
 	}
 
 	// clean up from bottom to up
-	for {
-		lines := g.cleanUp()
-		if lines == 0 {
-			break
-		}
-		g.Score += lines
-	}
+	score := g.cleanUp()
+	g.Score = g.Score + score
 }
 
 func (g *Game) Down() {

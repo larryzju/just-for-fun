@@ -1,5 +1,6 @@
 // +build linux darwin
 // +build cgo
+
 package main
 
 // #include <termios.h>
