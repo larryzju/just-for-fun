@@ -107,15 +107,32 @@ func (t *Tetris) Rotate() *Tetris {
 	}
 }
 
+type Ticker struct {
+	*time.Ticker
+	Duration time.Duration
+}
+
+func NewTicker(duration time.Duration) *Ticker {
+	return &Ticker{
+		Duration: duration,
+		Ticker:   time.NewTicker(duration),
+	}
+}
+
 type Game struct {
 	Input         Input
 	Display       Display
 	Width, Height int
 	Score         int
 	Level         int
-	over          chan struct{}
 	prev, cur     *Tetris
 	board         []*Block
+
+	tickerDuration time.Duration
+
+	over   chan struct{}
+	score  chan int
+	ticker *Ticker
 }
 
 func (g *Game) FlushTetris() {
@@ -231,7 +248,11 @@ func (g *Game) persistTetris(t *Tetris) {
 
 	// clean up from bottom to up
 	score := g.cleanUp()
-	g.Score = g.Score + score
+	g.AddScore(score)
+}
+
+func (g *Game) AddScore(score int) {
+	g.score <- score
 }
 
 func (g *Game) Down() {
@@ -245,8 +266,6 @@ func (g *Game) Down() {
 		g.Display.DrawTetris(g.cur, true)
 		// persist to board
 		g.persistTetris(g.cur)
-		// update score
-		g.Display.UpdateScore(g.Score, g.Level)
 		// re-draw blocks
 		g.Display.DrawBlocks(g.board)
 
@@ -267,7 +286,6 @@ func (g *Game) Down() {
 // Listen to the input and ticks
 func (g *Game) Listen() {
 	input := g.Input.Input()
-	tick := time.Tick(1000 * time.Millisecond)
 	over := false
 	for !over {
 		select {
@@ -282,8 +300,17 @@ func (g *Game) Listen() {
 			case TurnRight:
 				g.Transform(g.cur.Rotate())
 			}
-		case <-tick:
+		case <-g.ticker.C:
 			g.Down()
+		case score := <-g.score:
+			oldLevel := g.Level
+			g.Score += score
+			g.Level = g.Score / 1
+			g.Display.UpdateScore(g.Score, g.Level)
+			if g.Level > oldLevel {
+				g.ticker.Stop()
+				g.ticker = NewTicker(time.Duration(float64(g.ticker.Duration) * 0.95))
+			}
 		case <-g.over:
 			over = true
 		}
@@ -301,8 +328,7 @@ func (g *Game) Init() {
 	g.cur = g.NewTetris()
 	g.FlushTetris()
 
-	// show score board
-	g.Display.UpdateScore(g.Score, g.Level)
+	g.AddScore(0)
 }
 
 func main() {
@@ -316,7 +342,9 @@ func main() {
 			Width:  width,
 			Height: height,
 		},
-		over: make(chan struct{}),
+		over:   make(chan struct{}),
+		ticker: NewTicker(1000 * time.Millisecond),
+		score:  make(chan int, 2),
 	}
 
 	g.Init()
