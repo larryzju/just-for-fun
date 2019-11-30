@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"syscall"
 	"time"
 )
 
@@ -58,6 +61,10 @@ type Point struct {
 
 func cleanScreen() {
 	fmt.Printf("%s[s", escape)
+}
+
+func hideCursor() {
+	// fmt.Printf("\e[?25l")
 }
 
 func moveCursor(line, col int) {
@@ -126,8 +133,12 @@ func (g *Game) newShape(s Shape) {
 }
 
 func (g *Game) Next(delta Point) {
+	nextPos := Point{g.pos.y + delta.y, g.pos.x + delta.x}
+	if g.isCollision(nextPos, g.shape) {
+		return
+	}
 	g.flushShape(g.pos, g.shape, true)
-	g.pos = Point{g.pos.y + delta.y, g.pos.x + delta.x}
+	g.pos = nextPos
 	g.flushShape(g.pos, g.shape, false)
 }
 
@@ -150,8 +161,87 @@ func (g *Game) isCollision(pos Point, s Shape) bool {
 	return false
 }
 
+type Key byte
+
+const (
+	Left Key = iota
+	Right
+	Down
+	TurnLeft
+	TurnRight
+)
+
+// ReadInput get input from keyboard
+func ReadInput() <-chan Key {
+	ch := make(chan Key, 3)
+	go func() {
+		for {
+			input := make([]byte, 1)
+			_, err := os.Stdin.Read(input)
+			if err != nil {
+				break
+			}
+
+			switch input[0] {
+			case 'h':
+				ch <- Left
+			case 'l':
+				ch <- Right
+			case 'j':
+				ch <- Down
+			case 'k':
+				ch <- TurnRight
+			}
+		}
+	}()
+	return ch
+}
+
+// Listen to the input and ticks
+func (g *Game) Listen() {
+	input := ReadInput()
+	tick := time.Tick(1000 * time.Millisecond)
+	for {
+		select {
+		case key := <-input:
+			switch key {
+			case Left:
+				g.Next(Point{0, -1})
+			case Right:
+				g.Next(Point{0, 1})
+			case Down:
+				g.Next(Point{1, 0})
+			case TurnRight:
+				newShape := g.shape.Rotate()
+				if !g.isCollision(g.pos, newShape) {
+					g.flushShape(g.pos, g.shape, true)
+					g.shape = newShape
+					g.flushShape(g.pos, g.shape, false)
+				}
+			}
+		case <-tick:
+			if !g.isCollision(Point{g.pos.y + 1, g.pos.x}, g.shape) {
+				g.Next(Point{1, 0})
+			}
+			g.flushScore()
+		}
+	}
+}
+
 func (g *Game) init() {
+	mode, err := TCGetLocalMode(os.Stdin.Fd())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	mode &= ^uint64(syscall.ECHO | syscall.ICANON)
+	log.Printf("%08X\n", mode)
+	if err := TCSetLocalMode(os.Stdin.Fd(), mode); err != nil {
+		log.Fatal(err)
+	}
+
 	cleanScreen()
+	hideCursor()
 	g.drawBoard(Point{10, 10}, Width, Height)
 	g.flushScore()
 	moveCursor(12, 12)
@@ -161,17 +251,6 @@ func main() {
 	g := Game{Origin: Point{10, 10}}
 	g.init()
 	g.newShape(ShapeT)
-	go func() {
-		for {
-			g.Score += 1
-			time.Sleep(time.Millisecond * 500)
-			if !g.isCollision(Point{g.pos.y + 1, g.pos.x}, g.shape) {
-				g.Next(Point{1, 0})
-			}
-			g.flushScore()
-		}
-	}()
-
-	time.Sleep(10 * time.Second)
+	g.Listen()
 	moveCursor(80, 0)
 }
