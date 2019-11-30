@@ -138,6 +138,18 @@ func (d *TTYDisplay) DrawTetris(t *Tetris, clear bool) {
 	}
 }
 
+func (d *TTYDisplay) DrawBlocks(blocks []*Block) {
+	for i, b := range blocks {
+		r, c := i/d.Width, i%d.Width
+		moveCursor(d.Origin.y+r, d.Origin.x+c)
+		if b != nil {
+			fmt.Printf("@")
+		} else {
+			fmt.Printf(" ")
+		}
+	}
+}
+
 func (d *TTYDisplay) UpdateScore(score, level int) {
 	moveCursor(d.Origin.y+1, d.Origin.x+d.Width+3)
 	fmt.Printf("Score:%05d", score)
