@@ -53,6 +53,31 @@ func(tty *TTYInput) Init() {
 	}
 }
 
+// ReadInput get input from keyboard
+func(tty *TTYInput) Input() <-chan Key {
+	ch := make(chan Key, 3)
+	go func() {
+		input := make([]byte, 4)
+		for {
+			_, err := os.Stdin.Read(input)
+			if err != nil {
+				break
+			}
+
+			switch input[0] {
+			case 'h':
+				ch <- Left
+			case 'l':
+				ch <- Right
+			case 'j':
+				ch <- Down
+			case 'k':
+				ch <- TurnRight
+			}
+		}
+	}()
+	return ch
+}
 // TTYDisplay show tetris on console
 type TTYDisplay struct {
 	Origin Point
