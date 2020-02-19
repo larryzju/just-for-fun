@@ -1,20 +1,22 @@
 <template>
+  <div>
     <div class="block" :class='block.status === 0 ? "unknown": "open"'>
         <div class='raw' v-if='block.status === 0' />
         <img v-else-if='isNaN(block.value)' src="explosion.gif" />
-        <div v-else :class='getBlockClass(block.value)'> {{block.value || ''}} </div>
+        <div v-else :class='style()'> {{block.value || ''}} </div>
+    </div>
     </div>
 </template>
 
 <script>
 export default {
-    name: "Block",
-    props: ["block"],
-    methods: {
-        getBlockClass(v) {
-            return "n"+v
-        },
+  name: "Block",
+  props: ['block'],
+  methods: {
+    style() {
+      return "n"+this.block.value
     },
+  }
 }
 </script>
 

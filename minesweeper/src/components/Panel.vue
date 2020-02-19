@@ -1,12 +1,11 @@
 <template>
-    <div>
+    <div class='panel'>
         <table>
-            <tr v-for='row in ms.height' :key='row'>
-                <td v-for='col in ms.width' :key='col'>
-                    <Block
-                        :block='getBlock(row, col)'
-                        @click.native.left='onLeftClick(row, col)'
-                        @click.native.right.prevent ='onRightClick(row, col)' />
+            <tr v-for='row in height' :key='row'>
+                <td v-for='col in width' :key='col'>
+                    <Block :block='block(row, col)' 
+                        @click.native.left='open(row, col)'
+                        @click.native.right.prevent ='mark(row, col)' />
                 </td>
             </tr>
         </table>
@@ -14,29 +13,30 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
 import Block from "./Block.vue"
 
 export default {
     name: 'Panel',
-    props: ['ms'],
     components: {
         Block,
     },
     methods: {
-        blockIndex: function(r, c) {
-            return (r-1)*this.ms.width + (c-1);
-        },
-        getBlock: function(r, c) {
-            return this.ms.blocks[this.blockIndex(r, c)]
-        },
-        onLeftClick: function(r, c) {
-            let index = this.blockIndex(r,c);
-            return this.ms.openBlock(index);
-        },
-        onRightClick: function(r, c) {
-            let index = this.blockIndex(r,c);
-            alert("to be implement, index=" + index);
-        }
+      index(row, col) {
+        return this.width * (row-1) + (col-1)
+      },
+      open(row, col) {
+        this.$store.dispatch('open', this.index(row, col))
+      },
+      mark(row, col) {
+        alert("mark "+this.index(row,col))
+      },
+      block(row, col) {
+        return this.blocks[this.index(row,col)];
+      }
+    },
+    computed: {
+      ...mapGetters(['height', 'width', 'blocks'])
     }
 }
 </script>

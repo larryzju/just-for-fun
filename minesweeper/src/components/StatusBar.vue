@@ -1,24 +1,21 @@
 <template>
     <div class="status-bar">
-        <div class="digital" id="remain">{{ms.mines - flags}}</div>
-        <div @click="$emit('reset')" id="emoji" class='em' :class='ms.over? "em-sob" : "em-smile"' />
-        <div class="digital" id="timer" >{{ms.seconds}}</div>
+        <div class='digital' id="remain">{{remains}}</div>
+        <div @click="reset" id="emoji" class='em' :class='over? "em-sob" : "em-smile"' />
+        <div class='digital' id="timer" >{{seconds}}</div>
     </div>
 </template>
 
 <script>
+import { mapGetters, mapActions } from 'vuex'
+
 export default {
     name: 'StatusBar',
-    props: ['ms'],
-    data() {
-        return {
-            flags: 0
-        }
+    methods: {
+      ...mapActions(['reset'])
     },
-    method: {
-        reset() {
-            alert("reset")
-        }
+    computed: {
+      ...mapGetters(['remains', 'seconds', 'over'])
     }
 }
 </script>
